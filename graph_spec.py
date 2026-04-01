@@ -394,6 +394,7 @@ def plot_network_graph(spec,
     ]
     ax.legend(handles    = legend_elements,
               loc        = "lower right",
+              bbox_to_anchor = (1.0, -0.05),
               fontsize   = 8,
               framealpha = 0.6)
 
