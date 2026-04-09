@@ -40,12 +40,13 @@ class GCTLNPerEdge(nn.Module):
  
         # Per-neuron tonic drive — raw param, mapped through softplus
         # so theta is always positive. Initialized to give theta ~ 0.1
-        self.theta_raw = nn.Parameter(torch.full((self.n,), -2.25))
+        self.theta_raw = nn.Parameter(torch.full((self.n,), -1.84))
  
         # Linear readout
-        self.readout = nn.Linear(self.n, self.n, bias=True)
-        nn.init.eye_(self.readout.weight)
-        nn.init.zeros_(self.readout.bias)
+        # Removed to listen to raw gCTLN activity
+        # self.readout = nn.Linear(self.n, self.n, bias=True)
+        # nn.init.eye_(self.readout.weight)
+        # nn.init.zeros_(self.readout.bias)
  
         # Initialize raw params from spec's eps/delta values
         self._init_from_spec()
@@ -95,8 +96,8 @@ class GCTLNPerEdge(nn.Module):
     def forward(self, t_eval, x0):
         traj = odeint(self.ode_func, x0, t_eval,
                       method='dopri5', rtol=1e-4, atol=1e-5)
-        pred = self.readout(traj)
-        return traj, pred
+        # pred = self.readout(traj)
+        return traj
  
     def limit_cycle_penalty(self):
         W         = self.build_W()
@@ -122,16 +123,15 @@ class GCTLNPerEdge(nn.Module):
         # We want late_mean to stay above some threshold (e.g. 0.05)
         return torch.clamp(0.05 - late_mean, min=0.0) ** 2
  
-    def variance_reward(self, traj):
+    def variance_reward(self, pred):
         """
         Reward temporal variance in the second half of the trajectory.
         Oscillations have high variance; fixed points have zero.
         Returns a penalty (negative reward) that decreases with variance.
         """
-        half = traj.shape[0] // 2
-        late_var = traj[half:].var(dim=0).mean()
-        # We want variance to be at least ~0.01
-        return torch.clamp(0.01 - late_var, min=0.0)
+        half = pred.shape[0] // 2
+        late_var = pred[half:].var(dim=0).mean()
+        return torch.clamp(0.02 - late_var, min=0.0)
  
     def to_numpy_W(self) -> np.ndarray:
         with torch.no_grad():
@@ -208,7 +208,7 @@ class GCTLNPerEdge(nn.Module):
  
 def train(model: GCTLNPerEdge,
           targets: torch.Tensor,
-          t_span: torch.Tensor,
+          t_span_full: torch.Tensor,
           x0: torch.Tensor,
           n_epochs: int = 2000,
           lr: float = 3e-3,
@@ -225,16 +225,30 @@ def train(model: GCTLNPerEdge,
     loss_history = []
  
     for epoch in range(n_epochs):
+
+        ## freeze bias for first 500 epochs
+        # if epoch < 500:
+        #     model.readout.bias.requires_grad_(False)
+        # else:
+        #     model.readout.bias.requires_grad_(True)
+
+        ## Use shorter integration window, then lengthen
+        ## This is to target gradient starvation
+        frac = min(1.0, 0.3 + 0.7 * epoch / 1000) 
+        n_pts = int(frac * len(t_span_full))
+        t_sub = t_span_full[:n_pts]
+        tgt_sub = targets[:n_pts]
+
         optimizer.zero_grad()
-        traj, pred  = model(t_span, x0)
-        recon_loss  = nn.functional.mse_loss(pred, targets)
+        traj  = model(t_sub, x0)
+        recon_loss  = nn.functional.mse_loss(traj, tgt_sub)
         penalty     = model.limit_cycle_penalty()
-        act_pen     = model.activity_penalty(traj)
-        var_pen     = model.variance_reward(traj)
+        # act_pen     = model.activity_penalty(traj)
+        # var_pen     = model.variance_reward(traj)
         loss        = (recon_loss
-                       + penalty_weight  * penalty
-                       + activity_weight * act_pen
-                       + variance_weight * var_pen)
+                       + penalty_weight  * penalty)
+                       # + activity_weight * act_pen
+                       # + variance_weight * var_pen)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
@@ -244,8 +258,9 @@ def train(model: GCTLNPerEdge,
         if epoch % print_every == 0:
             print(f"epoch {epoch:4d} | loss {recon_loss.item():.5f} "
                   f"| penalty {penalty.item():.6f} "
-                  f"| act_pen {act_pen.item():.6f} "
-                  f"| var_pen {var_pen.item():.6f}")
+                #   f"| act_pen {act_pen.item():.6f} "
+                #   f"| var_pen {var_pen.item():.6f}"
+                )
  
     return loss_history
  
@@ -257,22 +272,29 @@ if __name__ == "__main__":
         motifs = [
             MotifSpec.cyclic(3, label="CPG-A",
                              eps_init=0.10, delta_init=0.50),
-            MotifSpec.cyclic(3, label="CPG-B",
-                             eps_init=0.10, delta_init=0.50),
+            # MotifSpec.cyclic(3, label="CPG-B",
+            #                  eps_init=0.10, delta_init=0.50),
         ],
         delta_cross = 0.05
     )
     spec.summary()
  
-    plot_network_graph(spec, title="Initial network — default weights")
+    # plot_network_graph(spec, title="Initial network — default weights")
  
     # ── 2. Verify numpy simulation works before training ──────────────────
+    print("Starting pre-training simulation...")
     W_init = spec.to_numpy_W()
-    x0_np  = np.array([0.3, 0.2, 0.1, 0.3, 0.2, 0.1])
-    t, sol = source.simulate(W_init, theta=0.1, T=300,
+    x0_np  = np.array([0.3, 0.2, 0.1
+                       # , 0.15, 0.08, 0.05
+                       ])
+    t_np, sol_np = source.simulate(W_init, theta=0.1, T=300,
                               n_steps=9000, x0=x0_np)
-    cut    = int(0.5 * len(t))
-    std_check = sol[cut:].std(axis=0)
+    print(f"Pre-training simulation complete. sol shape: {sol_np.shape}")
+    targets = torch.from_numpy(sol_np).float()
+    t_span_full = torch.from_numpy(t_np).float()
+    print(f"Targets ready. Shape: {targets.shape}")
+    cut    = int(0.5 * len(t_np))
+    std_check = sol_np[cut:].std(axis=0)
     print(f"\nPre-training numpy simulation std: {std_check.round(4)}")
     print("(nonzero = oscillating, as expected)")
  
@@ -280,7 +302,7 @@ if __name__ == "__main__":
     # KEY FIX: Non-negative targets!  CTLNs produce x >= 0.
     # Use shifted sinusoids in [0, 1] instead of [-1, 1].
     # Longer window (10*pi ~ 5 full cycles) so decay is penalized.
-    t_span       = torch.linspace(0, 10 * np.pi, 1000)
+    t_span_full       = torch.linspace(0, 10 * np.pi, 1000)
     phase_offset = 2 * np.pi / 3
  
     def nonneg_sin(t, phase=0.0, amp=0.4, offset=0.5):
@@ -288,22 +310,24 @@ if __name__ == "__main__":
         return offset + amp * torch.sin(t + phase)
  
     targets = torch.stack([
-        nonneg_sin(t_span, 0),
-        nonneg_sin(t_span, phase_offset),
-        nonneg_sin(t_span, 2 * phase_offset),
-        nonneg_sin(t_span, 0),                    # CPG-B mirrors CPG-A
-        nonneg_sin(t_span, phase_offset),
-        nonneg_sin(t_span, 2 * phase_offset),
+        nonneg_sin(t_span_full, 0),
+        nonneg_sin(t_span_full, phase_offset),
+        nonneg_sin(t_span_full, 2 * phase_offset),
+        # nonneg_sin(t_span_full, 0),                    # CPG-B mirrors CPG-A
+        # nonneg_sin(t_span_full, phase_offset),
+        # nonneg_sin(t_span_full, 2 * phase_offset),
     ], dim=1)
  
     # ── 4. Train ──────────────────────────────────────────────────────────
     model  = GCTLNPerEdge(spec)
-    x0_pt  = torch.tensor([0.15, 0.08, 0.05, 0.15, 0.08, 0.05])
-    loss_h = train(model, targets, t_span, x0_pt, n_epochs=2000)
+    x0_pt  = torch.tensor([0.15, 0.08, 0.05
+                           #, 0.15, 0.08, 0.05
+                           ])
+    loss_h = train(model, targets, t_span_full, x0_pt, n_epochs=2000)
  
     # ── 5. Inspect learned weights ────────────────────────────────────────
     model.get_edge_summary()
-    model.plot_graph(title="Learned gCTLN weights")
+    # model.plot_graph(title="Learned gCTLN weights")
  
     # ── 6. Plot training curve ────────────────────────────────────────────
     plt.figure(figsize=(8, 3))
@@ -327,7 +351,7 @@ if __name__ == "__main__":
             axis_labels.append(f"{m.label} / n{local_idx}")
  
     with torch.no_grad():
-        traj, pred = model(t_span, x0_pt)
+        traj = model(t_span_full, x0_pt)
  
     fig, axes = plt.subplots(n_out, 1,
                               figsize=(11, 2.5 * n_out),
@@ -336,18 +360,19 @@ if __name__ == "__main__":
         axes = [axes]
  
     motif_palette = ["#c0392b", "#1a5276", "#1e8449",
-                     "#7d3c98", "#d35400", "#117a65"]
+                     #"#7d3c98", "#d35400", "#117a65"
+                     ]
  
     for i, (ax, lbl) in enumerate(zip(axes, axis_labels)):
         motif_idx = next(mi for mi, sl in enumerate(spec.slices)
                          if sl.start <= i < sl.stop)
         color = motif_palette[motif_idx % len(motif_palette)]
  
-        ax.plot(t_span, targets[:, i].numpy(),
+        ax.plot(t_span_full, targets[:, i].numpy(),
                 "k--", lw=1.5, label="target")
-        ax.plot(t_span, pred[:, i].numpy(),
-                color=color, lw=1.5, label="gCTLN")
-        ax.plot(t_span, traj[:, i].numpy(),
+        # ax.plot(t_span_full, pred[:, i].numpy(),
+        #         color=color, lw=1.5, label="gCTLN")
+        ax.plot(t_span_full, traj[:, i].numpy(),
                 color=color, lw=0.8, alpha=0.4, linestyle=":",
                 label="raw (pre-readout)")
         ax.set_ylabel(lbl, fontsize=8)
@@ -378,9 +403,9 @@ if __name__ == "__main__":
 #         global_idx = sl.start + local_idx
 #         ax = axes[local_idx, motif_idx]
 #         color = motif_palette[motif_idx % len(motif_palette)]
-#         ax.plot(t_span, targets[:, global_idx].numpy(),
+#         ax.plot(t_span_full, targets[:, global_idx].numpy(),
 #                 "k--", lw=1.5, label="target")
-#         ax.plot(t_span, pred[:, global_idx].numpy(),
+#         ax.plot(t_span_full, pred[:, global_idx].numpy(),
 #                 color=color, lw=1.5, label="gCTLN")
 #         ax.set_title(f"{m.label} / n{local_idx}", fontsize=9)
 #         ax.spines[["top", "right"]].set_visible(False)
