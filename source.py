@@ -1,4 +1,3 @@
-
 # Imports
 
 import numpy as np
@@ -132,7 +131,7 @@ def diagnose_and_plot(W, slices, x0, theta=0.1, T=500, n_steps=10000,
         ax.spines[["top","right"]].set_visible(False)
     axes[-1].set_xlabel("Time (steady state)", fontsize=10)
     plt.tight_layout()
-    plt.show()
+    plt.close("all")
 
     # PCA
     pca     = PCA(n_components=3)
@@ -155,7 +154,7 @@ def diagnose_and_plot(W, slices, x0, theta=0.1, T=500, n_steps=10000,
     ax3d.set_zlabel(f"PC3 ({var[2]:.1f}%)", fontsize=9)
     ax3d.legend(fontsize=9)
     plt.tight_layout()
-    plt.show()
+    plt.close("all")
 
     return t, sol, sol_ss, t_ss, sol_pca
 
@@ -355,7 +354,7 @@ def bifurcation_sweep(eps, delta, theta, n_dc=200, T=600, n_steps=18000,
         f"Bifurcation diagram  |  eps={eps}, delta={delta}, theta={theta}",
         fontsize=12)
     plt.tight_layout()
-    plt.show()
+    plt.close("all")
 
     return dc_vals, mean_A_fromA, mean_B_fromA, mean_A_fromB, mean_B_fromB
 
@@ -460,6 +459,7 @@ def plot_per_subgraph_pca(sol_ss, slices, motif_labels=None,
     fig.suptitle("Per-subgraph PCA", fontsize=13)
     plt.tight_layout()
     plt.savefig("per_subgraph_pca.png")
+    plt.close()
 
 # ── Raster + population rate ──────────────────────────────────────────────────
 
@@ -517,6 +517,7 @@ def plot_raster(sol_ss, t_ss, slices, motif_labels=None,
     ax2.spines[["top","right"]].set_visible(False)
     plt.tight_layout()
     plt.savefig("raster_plot.png")
+    plt.close()
 
 # ── Inter-motif phase portrait ────────────────────────────────────────────────
 
@@ -548,6 +549,9 @@ def plot_phase_portrait(sol_ss, t_ss, slices, motif_labels=None,
               f"(of {k*(k-1)//2} total)")
 
     n_pairs = len(all_pairs)
+    if n_pairs == 0:
+        print("  Skipping phase portraits (need ≥ 2 motifs)")
+        return
     ncols   = min(ncols, n_pairs)
     nrows   = int(np.ceil(n_pairs / ncols))
     colors_time = plt.cm.viridis(np.linspace(0, 1, len(t_ss)))
@@ -584,6 +588,7 @@ def plot_phase_portrait(sol_ss, t_ss, slices, motif_labels=None,
     fig.suptitle("Inter-motif phase portraits", fontsize=13)
     plt.tight_layout()
     plt.savefig("inter_motif_phase_portraits.png")
+    plt.close()
 
 # ── UMAP ──────────────────────────────────────────────────────────────────────
 
@@ -629,6 +634,7 @@ def plot_umap(sol_ss, slices, motif_labels=None):
     ax.set_title("UMAP — colored by dominant motif", fontsize=11)
     plt.tight_layout()
     plt.savefig("umap.png")
+    plt.close()
 
 # ── Master function ───────────────────────────────────────────────────────────
 
@@ -776,6 +782,9 @@ def plot_torus_structure(sol_ss, t_ss, slices, motif_labels=None):
        closed curve = rational ratio, dense fill = irrational ratio
     """
     k = len(slices)
+    if k < 2:
+        print("  Skipping torus structure (need ≥ 2 motifs)")
+        return
     if motif_labels is None:
         motif_labels = [f"Motif {i}" for i in range(k)]
     motif_colors = make_palette(k)
@@ -844,7 +853,7 @@ def plot_torus_structure(sol_ss, t_ss, slices, motif_labels=None):
 
     plt.suptitle("Torus structure of coupled oscillators", fontsize=13)
     plt.tight_layout()
-    plt.show()
+    plt.close("all")
 
     # Print frequency ratio
     # Estimate frequency from mean phase velocity
@@ -897,6 +906,9 @@ def plot_torus_3d(sol_ss, t_ss, slices, motif_labels=None,
     fade_window   : if set, only show this many recent steps as a trail
                     None shows the full trajectory
     """
+    if len(slices) < 2:
+        print("  Skipping torus plot (need ≥ 2 motifs)")
+        return
     if motif_labels is None:
         motif_labels = [f"Motif {i}" for i in range(len(slices))]
 
@@ -990,7 +1002,7 @@ def plot_torus_3d(sol_ss, t_ss, slices, motif_labels=None,
     )
 
     plt.tight_layout()
-    plt.show()
+    plt.close("all")
 
 
 def animate_torus_save(sol_ss, t_ss, slices, motif_labels=None,
@@ -1003,6 +1015,9 @@ def animate_torus_save(sol_ss, t_ss, slices, motif_labels=None,
     Same as animate_torus but saves directly to MP4.
     Much faster and lighter than to_jshtml for long animations.
     """
+    if len(slices) < 2:
+        print("  Skipping torus animation (need ≥ 2 motifs)")
+        return
     if motif_labels is None:
         motif_labels = [f"Motif {i}" for i in range(len(slices))]
 

@@ -279,7 +279,7 @@ if __name__ == "__main__":
     )
     spec.summary()
  
-    # plot_network_graph(spec, title="Initial network — default weights")
+    plot_network_graph(spec, title="Initial network — default weights")
  
     # ── 2. Verify numpy simulation works before training ──────────────────
     print("Starting pre-training simulation...")
@@ -327,7 +327,7 @@ if __name__ == "__main__":
  
     # ── 5. Inspect learned weights ────────────────────────────────────────
     model.get_edge_summary()
-    # model.plot_graph(title="Learned gCTLN weights")
+    model.plot_graph(title="Learned gCTLN weights")
  
     # ── 6. Plot training curve ────────────────────────────────────────────
     plt.figure(figsize=(8, 3))
