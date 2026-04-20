@@ -1,0 +1,106 @@
+================================================================
+STANDARD GNN BASELINE — 3-sine-wave toy problem (gCTLN contrast)
+================================================================
+
+Architecture:
+  (1) FeedforwardGNN — t as input, no temporal recurrence
+  (2) RecurrentGNN   — learned neural ODE on 3-cycle graph
+  Shared MPLayer: MLP(concat src,dst) → sum-aggregate → MLP update
+
+Task: fit three non-negative sines at 120° phase offsets
+      x_i(t) = 0.4·sin(t + i·2π/3) + 0.5   on a 3-cycle graph
+
+Purpose: show vanilla GNNs struggle with sustained oscillations,
+         exposing the inductive-bias advantage of gCTLNs.
+================================================================
+
+Configuration:
+  Script:   scripts/gnn_baseline.py
+  Output:   /scratch/xfd3tf/gnn_sine_baseline
+  Device:   CPU (problem is tiny — 3 nodes, 1k timesteps)
+  Threads:  4
+================================================================
+
+=============
+== PyTorch ==
+=============
+
+NVIDIA Release 25.04 (build 159049541)
+PyTorch Version 2.7.0a0+79aa174
+Container image Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright (c) 2014-2024 Facebook Inc.
+Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
+Copyright (c) 2012-2014 Deepmind Technologies    (Koray Kavukcuoglu)
+Copyright (c) 2011-2012 NEC Laboratories America (Koray Kavukcuoglu)
+Copyright (c) 2011-2013 NYU                      (Clement Farabet)
+Copyright (c) 2006-2010 NEC Laboratories America (Ronan Collobert, Leon Bottou, Iain Melvin, Jason Weston)
+Copyright (c) 2006      Idiap Research Institute (Samy Bengio)
+Copyright (c) 2001-2004 Idiap Research Institute (Ronan Collobert, Samy Bengio, Johnny Mariethoz)
+Copyright (c) 2015      Google Inc.
+Copyright (c) 2015      Yangqing Jia
+Copyright (c) 2013-2016 The Caffe contributors
+All rights reserved.
+
+Various files include modifications (c) NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+
+GOVERNING TERMS: The software and materials are governed by the NVIDIA Software License Agreement
+(found at https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-license-agreement/)
+and the Product-Specific Terms for NVIDIA AI Products
+(found at https://www.nvidia.com/en-us/agreements/enterprise-software/product-specific-terms-for-ai-products/).
+
+WARNING: The NVIDIA Driver was not detected.  GPU functionality will not be available.
+   Use the NVIDIA Container Toolkit to start this container with GPU support; see
+   https://docs.nvidia.com/datacenter/cloud-native/ .
+
+NOTE: Mellanox network driver detected, but NVIDIA peer memory driver not
+      detected.  Multi-node communication performance may be reduced.
+
+============================================================
+Feedforward GNN — t as input, no temporal recurrence
+============================================================
+  params: 19009
+  [feedforward_gnn] epoch    0  loss = 5.61957
+  [feedforward_gnn] epoch  200  loss = 0.07062
+  [feedforward_gnn] epoch  400  loss = 0.05602
+  [feedforward_gnn] epoch  600  loss = 0.04397
+  [feedforward_gnn] epoch  800  loss = 0.04756
+  [feedforward_gnn] epoch 1000  loss = 0.04000
+  [feedforward_gnn] epoch 1200  loss = 0.03650
+  [feedforward_gnn] epoch 1400  loss = 0.03375
+  [feedforward_gnn] epoch 1600  loss = 0.03020
+  [feedforward_gnn] epoch 1800  loss = 0.02600
+  [feedforward_gnn] epoch 1999  loss = 0.02532
+  [feedforward_gnn] MSE (in-range)    = 0.02532
+  [feedforward_gnn] MSE (extrapolate) = 1.16016
+
+============================================================
+Recurrent GNN — learned neural ODE on the 3-cycle graph
+============================================================
+  params: 6401
+  [recurrent_gnn] epoch    0  loss = 164.11812
+  [recurrent_gnn] epoch  200  loss = 0.07642
+  [recurrent_gnn] epoch  400  loss = 0.04522
+  [recurrent_gnn] epoch  600  loss = 0.00587
+  [recurrent_gnn] epoch  800  loss = 0.00033
+  [recurrent_gnn] epoch 1000  loss = 0.00018
+  [recurrent_gnn] epoch 1200  loss = 0.00013
+  [recurrent_gnn] epoch 1400  loss = 0.00010
+  [recurrent_gnn] epoch 1600  loss = 0.00009
+  [recurrent_gnn] epoch 1800  loss = 0.00009
+  [recurrent_gnn] epoch 1999  loss = 0.00009
+  [recurrent_gnn] MSE (in-range)    = 0.00009
+  [recurrent_gnn] MSE (extrapolate) = 8.01386
+
+============================================================
+Summary
+============================================================
+  feedforward_gnn (19009 params):  in=0.0253  extrap=1.1602
+  recurrent_gnn   (6401 params):  in=0.0001  extrap=8.0139
+
+Outputs saved to /scratch/xfd3tf/gCTLN/imgs
+
+✅ Training complete!
+   Plots saved to: /scratch/xfd3tf/gnn_sine_baseline
+total 0
+drwx--S--- 1 xfd3tf users 0 Apr 20 15:37 .
+drwx--S--- 1 xfd3tf users 0 Apr 20 15:37 ..

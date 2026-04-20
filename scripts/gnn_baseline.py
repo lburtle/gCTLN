@@ -1,3 +1,4 @@
+
 # gnn_sine_baseline.py
 #
 # Standard GNN baseline for the 3-sine-wave toy problem used in gCTLN work.
@@ -28,7 +29,7 @@ from pathlib import Path
 torch.manual_seed(0)
 np.random.seed(0)
 
-OUT_DIR = Path("/project/vil_baek/landon/gCTLN/imgs")
+OUT_DIR = Path("/scratch/xfd3tf/gCTLN/imgs")
 OUT_DIR.mkdir(exist_ok=True)
 
 
