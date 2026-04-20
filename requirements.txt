@@ -1,0 +1,8 @@
+torch
+torchdiffeq
+matplotlib
+scipy
+cmaes
+scikit-learn
+IPython
+networkx
