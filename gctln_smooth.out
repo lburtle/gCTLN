@@ -1,0 +1,120 @@
+================================================================
+gCTLN w/ SOFTPLUS SMOOTHING — 3-sine-wave toy problem
+================================================================
+
+Architecture:
+  GCTLNPerEdge with per-edge weight learning
+  ODE: dx/dt = -x + softplus(W·x + θ, β)
+       (softplus replaces torch.clamp to smooth gradients
+        through the adjoint method)
+
+Task: fit three non-negative sines at 120° phase offsets
+      x_i(t) = 0.4·sin(t + i·2π/3) + 0.5   on a 3-cycle motif
+
+Purpose: test whether smoothed CTLN dynamics enable
+         gradient-based discovery of oscillatory regimes
+         (previously failed under piecewise-linear ReLU).
+================================================================
+
+Configuration:
+  Script:   scripts/gctln_w_uniq_edges.py
+  Output:   /scratch/xfd3tf/gctln_smooth
+  Device:   CPU (3-neuron CTLN, 1k timesteps)
+  Threads:  1
+================================================================
+
+=============
+== PyTorch ==
+=============
+
+NVIDIA Release 25.04 (build 159049541)
+PyTorch Version 2.7.0a0+79aa174
+Container image Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright (c) 2014-2024 Facebook Inc.
+Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
+Copyright (c) 2012-2014 Deepmind Technologies    (Koray Kavukcuoglu)
+Copyright (c) 2011-2012 NEC Laboratories America (Koray Kavukcuoglu)
+Copyright (c) 2011-2013 NYU                      (Clement Farabet)
+Copyright (c) 2006-2010 NEC Laboratories America (Ronan Collobert, Leon Bottou, Iain Melvin, Jason Weston)
+Copyright (c) 2006      Idiap Research Institute (Samy Bengio)
+Copyright (c) 2001-2004 Idiap Research Institute (Ronan Collobert, Samy Bengio, Johnny Mariethoz)
+Copyright (c) 2015      Google Inc.
+Copyright (c) 2015      Yangqing Jia
+Copyright (c) 2013-2016 The Caffe contributors
+All rights reserved.
+
+Various files include modifications (c) NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+
+GOVERNING TERMS: The software and materials are governed by the NVIDIA Software License Agreement
+(found at https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-license-agreement/)
+and the Product-Specific Terms for NVIDIA AI Products
+(found at https://www.nvidia.com/en-us/agreements/enterprise-software/product-specific-terms-for-ai-products/).
+
+WARNING: The NVIDIA Driver was not detected.  GPU functionality will not be available.
+   Use the NVIDIA Container Toolkit to start this container with GPU support; see
+   https://docs.nvidia.com/datacenter/cloud-native/ .
+
+NOTE: Mellanox network driver detected, but NVIDIA peer memory driver not
+      detected.  Multi-node communication performance may be reduced.
+
+NetworkSpec: 1 motifs, 3 neurons total
+  [0] CPG-A: 3 neurons, 3 edges, eps=0.1, delta=0.5
+  delta_cross matrix:
+[[0.]]
+Starting pre-training simulation...
+Pre-training simulation complete. sol shape: (9000, 3)
+Targets ready. Shape: torch.Size([9000, 3])
+
+Pre-training numpy simulation std: [0.0257 0.0256 0.0257]
+(nonzero = oscillating, as expected)
+epoch    0 | loss 0.29270 | penalty 0.000000 
+epoch  200 | loss 0.26295 | penalty 0.000000 
+epoch  400 | loss 0.19548 | penalty 0.000000 
+epoch  600 | loss 0.08955 | penalty 0.000000 
+epoch  800 | loss 0.08151 | penalty 0.000000 
+epoch 1000 | loss 0.08137 | penalty 0.000000 
+epoch 1200 | loss 0.08133 | penalty 0.000000 
+epoch 1400 | loss 0.08133 | penalty 0.000000 
+epoch 1600 | loss 0.08132 | penalty 0.000000 
+epoch 1800 | loss 0.08132 | penalty 0.000000 
+
+Weight matrix W (3x3):
+[[-0.     -1.0824  0.4035]
+ [ 0.533  -0.     -1.0717]
+ [-1.0824  0.4301 -0.    ]]
+
+Theta: [1.     0.9522 1.    ]
+
+Per-edge weights:
+  2->0: W=0.4035  eps=1.4035
+  0->1: W=0.5330  eps=1.5330
+  1->2: W=0.4301  eps=1.4301
+
+Per-non-edge weights (sample):
+  1->0: W=-1.0824  delta=0.0824
+  2->1: W=-1.0717  delta=0.0717
+  0->2: W=-1.0824  delta=0.0824
+Network: 1 motifs, 3 neurons total
+Steady state: t=250.0 to 500.0
+  CPG-A           | mean=0.6055  std=0.0000  static
+
+── Per-subgraph PCA ─────────────────────────────────
+── Raster + population rate ─────────────────────────
+── Inter-motif phase portraits ───────────────────────
+  Skipping phase portraits (need ≥ 2 motifs)
+── UMAP embedding ───────────────────────────────────
+'imgs/gctln_fit.png' -> '/scratch/xfd3tf/gctln_smooth/gctln_fit.png'
+'imgs/gctln_loss.png' -> '/scratch/xfd3tf/gctln_smooth/gctln_loss.png'
+
+✅ Training complete!
+   Plots saved to: /scratch/xfd3tf/gctln_smooth
+total 940
+drwx--S--- 1 xfd3tf users      0 Apr 22 18:49 .
+drwx--S--- 1 xfd3tf users      0 Apr 22 18:49 ..
+-rw------- 1 xfd3tf users 179434 Apr 22 21:29 gctln_cmaes_fit.png
+-rw------- 1 xfd3tf users  25978 Apr 22 21:29 gctln_cmaes_loss.png
+-rw------- 1 xfd3tf users 186518 Apr 22 22:18 gctln_fit.png
+-rw------- 1 xfd3tf users  30643 Apr 22 22:18 gctln_loss.png
+-rw------- 1 xfd3tf users 367043 Apr 22 21:29 gctln_twostage_fit.png
+-rw------- 1 xfd3tf users  53157 Apr 22 21:29 gctln_twostage_loss.png
+-rw------- 1 xfd3tf users 109588 Apr 22 21:29 gctln_twostage_raw.png

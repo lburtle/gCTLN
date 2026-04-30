@@ -6,7 +6,7 @@
 #   4. Theta clamped to safe range during training
 #   5. Activity-collapse penalty to prevent fixed-point convergence
 #   6. Removed accidental double-training
-
+ 
 import torch
 import torch.nn as nn
 from torchdiffeq import odeint
@@ -54,7 +54,7 @@ class GCTLNPerEdge(nn.Module):
     @property
     def theta(self):
         """Theta is always positive via softplus, clamped to [0.01, 0.5]."""
-        return torch.nn.functional.softplus(self.theta_raw).clamp(0.01, 1.0)
+        return torch.nn.functional.softplus(self.theta_raw).clamp(0.01, 0.5)
 
     def _init_from_spec(self):
         """
@@ -91,7 +91,7 @@ class GCTLNPerEdge(nn.Module):
     def ode_func(self, t, x):
         W     = self.build_W()
         drive = W @ x + self.theta
-        return -x + torch.nn.functional.gelu(drive)
+        return -x + torch.nn.functional.softplus(drive, beta=10.0)
  
     def forward(self, t_eval, x0):
         traj = odeint(self.ode_func, x0, t_eval,
@@ -132,6 +132,7 @@ class GCTLNPerEdge(nn.Module):
         half = pred.shape[0] // 2
         late_var = pred[half:].var(dim=0).mean()
         return torch.clamp(0.02 - late_var, min=0.0)
+ 
     def to_numpy_W(self) -> np.ndarray:
         with torch.no_grad():
             return self.build_W().numpy()
@@ -240,7 +241,7 @@ def train(model: GCTLNPerEdge,
 
         optimizer.zero_grad()
         pred, traj  = model(t_sub, x0)
-        recon_loss  = nn.functional.mse_loss(traj, tgt_sub)
+        recon_loss  = nn.functional.mse_loss(pred, tgt_sub)
         penalty     = model.limit_cycle_penalty()
         # act_pen     = model.activity_penalty(traj)
         # var_pen     = model.variance_reward(traj)
@@ -350,7 +351,7 @@ if __name__ == "__main__":
             axis_labels.append(f"{m.label} / n{local_idx}")
  
     with torch.no_grad():
-        pred, traj = model(t_span_full, x0_pt)
+        traj = model(t_span_full, x0_pt)
  
     fig, axes = plt.subplots(n_out, 1,
                               figsize=(11, 2.5 * n_out),
@@ -369,8 +370,8 @@ if __name__ == "__main__":
  
         ax.plot(t_span_full, targets[:, i].numpy(),
                 "k--", lw=1.5, label="target")
-        ax.plot(t_span_full, pred[:, i].numpy(),
-                color=color, lw=1.5, label="gCTLN")
+        # ax.plot(t_span_full, pred[:, i].numpy(),
+        #         color=color, lw=1.5, label="gCTLN")
         ax.plot(t_span_full, traj[:, i].numpy(),
                 color=color, lw=0.8, alpha=0.4, linestyle=":",
                 label="raw (pre-readout)")
