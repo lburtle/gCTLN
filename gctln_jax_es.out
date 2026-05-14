@@ -1,0 +1,38 @@
+================================================================
+gCTLN w/ STRICT RELU & JAX OPENAI-ES — 3-node Vector Field Target
+================================================================
+
+Architecture:
+  Pure JAX implementation of gCTLN with per-edge weights
+  ODE: dx/dt = -x + ReLU(W·x + θ)
+       (Restored strict ReLU bounds, optimized via Evolution Strategies)
+
+Task: Find topological limit cycles using a phase-space vector
+      field target, rather than time-series sine matching.
+
+Purpose: Use jax.vmap to evaluate thousands of candidate networks
+         in parallel on the GPU to bypass shattered gradients.
+================================================================
+
+Configuration:
+  Script:   scripts/jaxgctln.py
+  Output:   /scratch/xfd3tf/gctln_jax_es
+  Device:   GPU 1x (vmapped ES Population)
+================================================================
+Starting Highly Parallel ES Training via JAX...
+Epoch   0 | Mean Fitness: -0.1867 | Max Fit: 1.6858
+Epoch  50 | Mean Fitness: 0.2974 | Max Fit: 1.5812
+Epoch 100 | Mean Fitness: 0.3074 | Max Fit: 1.5268
+Epoch 150 | Mean Fitness: 0.3239 | Max Fit: 1.5793
+Epoch 200 | Mean Fitness: 0.2875 | Max Fit: 1.6930
+Epoch 250 | Mean Fitness: 0.3096 | Max Fit: 1.6887
+'imgs/gctln_fit.png' -> '/scratch/xfd3tf/gctln_jax_es/gctln_fit.png'
+'imgs/gctln_loss.png' -> '/scratch/xfd3tf/gctln_jax_es/gctln_loss.png'
+
+✅ ES Training complete!
+   Plots saved to: /scratch/xfd3tf/gctln_jax_es
+total 216
+drwx--S--- 1 xfd3tf users      0 May  3 14:38 .
+drwx--S--- 1 xfd3tf users      0 May  3 14:38 ..
+-rw------- 1 xfd3tf users 186518 May  3 19:11 gctln_fit.png
+-rw------- 1 xfd3tf users  30643 May  3 19:11 gctln_loss.png
