@@ -46,7 +46,7 @@ def target_vector_field(x):
     """
     Defines a stable limit cycle centered in the positive orthant.
     """
-    # 1. Shift the center of the "merry-go-round" to positive space
+    # 1. Shift the center of field to positive space
     center = jnp.array([0.5, 0.5, 0.5])
     x_c = x - center
     
@@ -166,6 +166,7 @@ def train_es(A, n_epochs=500, pop_size=256, sigma=0.1, alpha=0.05):
 # ─── 4. EXECUTION ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     # Define adjacency for a 3-node cyclic motif
+    # (1 -> 2 -> 3 -> 1)
     A = jnp.array([
         [0, 1, 0],
         [0, 0, 1],
