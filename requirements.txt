@@ -3,3 +3,4 @@ cmaes
 scikit-learn
 IPython
 networkx
+matplotlib

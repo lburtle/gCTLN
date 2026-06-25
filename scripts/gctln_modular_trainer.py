@@ -732,7 +732,7 @@ class GCTLNTrainer:
             f"gCTLN fit — {spec.k} motifs, {spec.n_total} neurons",
             fontsize=12)
         plt.tight_layout()
-        plt.savefig(f"../../imgs/{prefix}_fit.png", dpi=150)
+        plt.savefig(f"imgs/{prefix}_fit.png", dpi=150)
         plt.close()
 
         # ── Training curves ───────────────────────────────────────────
@@ -752,7 +752,7 @@ class GCTLNTrainer:
         ax2.spines[["top", "right"]].set_visible(False)
 
         plt.tight_layout()
-        plt.savefig(f"../imgs/{prefix}_loss.png", dpi=150)
+        plt.savefig(f"imgs/{prefix}_loss.png", dpi=150)
         plt.close()
 
         # ── Raw CTLN waveforms ────────────────────────────────────────
@@ -842,7 +842,7 @@ def example_anti_phase_pair():
             inter_motif_phase_targets=[np.pi],  # anti-phase
             n_generations=500,
             population_size=60),
-        stage2_config=Stage2Config(readout_type='linear'))
+        stage2_config=Stage2Config(readout_type='mlp'))
     trainer.train(targets, t_span, x0)
     trainer.summary()
     trainer.plot(prefix="anti_phase")
